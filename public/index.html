@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat s námi</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    #clientId {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h3>Napište nám</h3>
+  <div id="messages"></div>
+  <input type="text" id="messageInput" placeholder="Vaše zpráva..." style="width: 80%;" />
+  <button onclick="sendMessage()">Odeslat</button>
+  <input type="hidden" id="clientId" />
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+    let clientId = localStorage.getItem('chatClientId');
+    if (!clientId) {
+      clientId = Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('chatClientId', clientId);
+    }
+    document.getElementById('clientId').value = clientId;
+
+    const messagesDiv = document.getElementById('messages');
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      await fetch(`${API_URL}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, clientId })
+      });
+
+      appendMessage('Vy', text);
+    }
+
+    function appendMessage(sender, text) {
+      const msg = document.createElement('div');
+      msg.textContent = `${sender}: ${text}`;
+      messagesDiv.appendChild(msg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function fetchMessages() {
+      const res = await fetch(`${API_URL}/chat/${clientId}`);
+      const data = await res.json();
+      messagesDiv.innerHTML = '';
+      data.forEach(m => {
+        appendMessage(m.from === 'client' ? 'Vy' : 'Admin', m.text);
+      });
+    }
+
+    setInterval(fetchMessages, 1000);
+  </script>
+</body>
+</html>
