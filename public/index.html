@@ -74,7 +74,7 @@
         const data = await res.json();
         messagesDiv.innerHTML = '';
         data.forEach(m => {
-          appendMessage(m.from === 'client' ? 'Vy' : 'Telegram', m.text);
+          appendMessage(m.from === 'client' ? 'Vy' : 'Viktor', m.text);
         });
       } catch (e) {
         console.error("❌ Chyba při načítání zpráv:", e);
