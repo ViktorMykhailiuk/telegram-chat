@@ -35,7 +35,7 @@
   <input type="hidden" id="clientId" />
 
   <script>
-    const API_URL = 'http://localhost:3000';
+    const API_URL = 'https://telegram-chat-rxox.onrender.com'; // 🔗 Адреса твого сервера на Render
     let clientId = localStorage.getItem('chatClientId');
     if (!clientId) {
       clientId = Math.random().toString(36).substring(2, 10);
@@ -51,6 +51,7 @@
       if (!text) return;
       input.value = '';
 
+      // Надсилаємо повідомлення до backend
       await fetch(`${API_URL}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,14 +69,19 @@
     }
 
     async function fetchMessages() {
-      const res = await fetch(`${API_URL}/chat/${clientId}`);
-      const data = await res.json();
-      messagesDiv.innerHTML = '';
-      data.forEach(m => {
-        appendMessage(m.from === 'client' ? 'Vy' : 'Admin', m.text);
-      });
+      try {
+        const res = await fetch(`${API_URL}/chat/${clientId}`);
+        const data = await res.json();
+        messagesDiv.innerHTML = '';
+        data.forEach(m => {
+          appendMessage(m.from === 'client' ? 'Vy' : 'Telegram', m.text);
+        });
+      } catch (e) {
+        console.error("❌ Chyba při načítání zpráv:", e);
+      }
     }
 
+    // Автоматичне оновлення кожну 1 секунду
     setInterval(fetchMessages, 1000);
   </script>
 </body>
