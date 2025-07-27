@@ -1,7 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const fetch = require("node-fetch");
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,58 +16,66 @@ const chatMemory = {};
 // 🛡️ Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static("public")); // для HTML-фронтенду
+app.use(express.static("public"));
 
-// 📩 Клієнт надсилає повідомлення
+// 📩 Надсилання повідомлення в Telegram
 app.post("/message", async (req, res) => {
   const { text, clientId } = req.body;
   if (!text || !clientId) return res.status(400).send({ error: "Missing data" });
 
   const msg = `💬 Повідомлення з сайту [${clientId}]:\n${text}`;
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: msg,
-    }),
-  });
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg }),
+    });
 
-  if (!chatMemory[clientId]) chatMemory[clientId] = [];
-  chatMemory[clientId].push({ from: "client", text, time: Date.now() });
+    if (!chatMemory[clientId]) chatMemory[clientId] = [];
+    chatMemory[clientId].push({ from: "client", text, time: Date.now() });
 
-  res.send({ status: "ok" });
+    res.send({ status: "ok" });
+  } catch (error) {
+    console.error("❌ Telegram send error:", error);
+    res.status(500).send({ error: "Telegram error" });
+  }
 });
 
-// 📥 Вебхук для отримання відповіді з Telegram
+// 📥 Вебхук Telegram (відповідь)
 app.post("/telegram-webhook", (req, res) => {
   const message = req.body.message;
   if (!message || !message.text) return res.sendStatus(200);
 
   const text = message.text;
-  const match = text.match(/\[(.*?)\]/); // шукаємо [clientId]
+  const match = text.match(/\[(.*?)\]/); // шукаємо clientId
   const clientId = match?.[1];
+
+  console.log("📨 Отримано повідомлення з Telegram:");
+  console.log("Текст:", text);
+  console.log("Витягнутий clientId:", clientId);
 
   if (clientId && chatMemory[clientId]) {
     chatMemory[clientId].push({ from: "telegram", text, time: Date.now() });
+    console.log("✅ Відповідь додано в chatMemory!");
+  } else {
+    console.log("⚠️ Клієнта не знайдено або немає повідомлень.");
   }
 
   res.sendStatus(200);
 });
 
-// 🔄 Отримати історію чату
+// 📜 Отримання історії
 app.get("/chat/:clientId", (req, res) => {
   const clientId = req.params.clientId;
   res.send(chatMemory[clientId] || []);
 });
 
-// 🎨 Простий фронтенд (для вставки в iframe)
+// 🎨 Вивід HTML
 app.get("/iframe", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-// 🚀 Запуск
+// ▶️ Запуск
 app.listen(PORT, () => {
   console.log(`🚀 Сервер працює на порту ${PORT}`);
 });
-
